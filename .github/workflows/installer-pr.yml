@@ -1,0 +1,39 @@
+on:
+  push:
+    tags:
+    - 202*
+
+env:
+  IMAGE_NAME: rancher/harvester-os:${{ github.ref_name }}
+
+jobs:
+  wait-image:
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait image to be ready
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 1
+          max_attempts: 1
+          retry_wait_seconds: 60
+          command: 'docker pull ${{ env.IMAGE_NAME }}'
+
+  generate-image-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - run: export
+      - run: ls ~/
+      - name: Install container-diff
+        run: |
+          sudo curl -sfL https://github.com/GoogleContainerTools/container-diff/releases/download/v0.17.0/container-diff-linux-amd64 -o /usr/bin/container-diff
+          sudo chmod +x /usr/bin/container-diff
+      - name: Get current OS image from installer
+        run: |
+          curl -sfL https://raw.githubusercontent.com/harvester/harvester-installer/master/scripts/package-harvester-os -o /tmp/package-harvester-os 
+          grep '^BASE_OS_IMAGE="rancher/harvester-os:' /tmp/package-harvester-os > /tmp/tmp-env
+      - name: Run container-diff
+        run: |
+          source /tmp/tmp-env
+          docker pull $BASE_OS_IMAGE
+          sudo container-diff diff daemon://docker.io/$BASE_OS_IMAGE daemon://docker.io/${{ env.IMAGE_NAME }} --type=rpm --type=file
