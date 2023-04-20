@@ -16,11 +16,9 @@ jobs:
       - name: Run container-diff
         run: |
           set -e
-          #docker pull rancher/harvester-os:20230413
-          #docker pull rancher/harvester-os:20230420
-          docker pull registry.suse.com/bci/bci-base:15.4.27.14.51
-          docker pull registry.suse.com/bci/bci-base:15.4.27.14.53
-          container-diff diff daemon://registry.suse.com/bci/bci-base:15.4.27.14.51 daemon://registry.suse.com/bci/bci-base:15.4.27.14.53 --type=rpm --output=diff-result.txt
+          docker pull rancher/harvester-os:20230413
+          docker pull rancher/harvester-os:20230420
+          container-diff diff daemon://docker.io/rancher/harvester-os:20230413 daemon://docker.io/rancher/harvester-os:20230420 --type=rpm --output=diff-result.txt
           cat diff-result.txt
       - name: Upload container-diff result
         uses: actions/upload-artifact@v3
