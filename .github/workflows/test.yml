@@ -1,5 +1,8 @@
 on: workflow_dispatch
 
+env:
+  IMAGE_NAME: rancher/harvester-os:20230420
+
 jobs:
   generate-image-diff:
     runs-on: ubuntu-latest
@@ -8,17 +11,27 @@ jobs:
     steps:
       - name: Install docker
         run: zypper ref && zypper -n install docker
+      - name: Pull new image
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 1
+          max_attempts: 10
+          retry_wait_seconds: 60
+          command: 'docker pull ${{ env.IMAGE_NAME }}'
       - name: Install container-diff
         run: |
-          false
           curl -sfL https://github.com/GoogleContainerTools/container-diff/releases/download/v0.17.0/container-diff-linux-amd64 -o /usr/bin/container-diff
           chmod +x /usr/bin/container-diff
+      - name: Get current OS image from installer
+        run: |
+          curl -sfL https://raw.githubusercontent.com/harvester/harvester-installer/master/scripts/package-harvester-os -o /tmp/package-harvester-os
+          grep '^BASE_OS_IMAGE="rancher/harvester-os:' /tmp/package-harvester-os > /tmp/tmp-env
       - name: Run container-diff
         run: |
-          set -e
-          docker pull rancher/harvester-os:20230413
-          docker pull rancher/harvester-os:20230420
-          container-diff diff daemon://docker.io/rancher/harvester-os:20230413 daemon://docker.io/rancher/harvester-os:20230420 --type=rpm --output=diff-result.txt
+          source /tmp/tmp-env
+          docker pull $BASE_OS_IMAGE
+          echo "Diff $BASE_OS_IMAGE with ${{ env.IMAGE_NAME }}..."
+          sudo container-diff diff daemon://docker.io/$BASE_OS_IMAGE daemon://docker.io/${{ env.IMAGE_NAME }} --type=rpm --output=diff-result.txt
           cat diff-result.txt
       - name: Upload container-diff result
         uses: actions/upload-artifact@v3
