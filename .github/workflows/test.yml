@@ -1,0 +1,29 @@
+on: workflow_dispatch
+
+jobs:
+  generate-image-diff:
+    runs-on: ubuntu-latest
+    container:
+      image: registry.suse.com/bci/bci-base:15.4
+    steps:
+      - name: Install docker
+        run: zypper ref && zypper -n install docker
+      - name: Install container-diff
+        run: |
+          set -e
+          curl -sfL https://github.com/GoogleContainerTools/container-diff/releases/download/v0.17.0/container-diff-linux-amd64 -o /usr/bin/container-diff
+          chmod +x /usr/bin/container-diff
+      - name: Run container-diff
+        run: |
+          set -e
+          #docker pull rancher/harvester-os:20230413
+          #docker pull rancher/harvester-os:20230420
+          docker pull registry.suse.com/bci/bci-base:15.4.27.14.51
+          docker pull registry.suse.com/bci/bci-base:15.4.27.14.53
+          container-diff diff daemon://registry.suse.com/bci/bci-base:15.4.27.14.51 daemon://registry.suse.com/bci/bci-base:15.4.27.14.53 --type=rpm --output=diff-result.txt
+          cat diff-result.txt
+      - name: Upload container-diff result
+        uses: actions/upload-artifact@v3
+        with:
+          name: diff-result
+          path: diff-result.txt
